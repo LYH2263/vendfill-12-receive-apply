@@ -1,7 +1,9 @@
+import json
 from datetime import datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
-from app.models.models import Lane, Location, Sale
+from app.models.models import Lane, Location, RefillOrder, Sale
+from app.services.fill_engine import build_fill_lines, summarize
 
 def seed_if_empty(db: Session) -> None:
     if (db.scalar(select(func.count()).select_from(Location)) or 0) > 0:
@@ -16,12 +18,17 @@ def seed_if_empty(db: Session) -> None:
         ("C1", "能量棒", 10, 0, 0),
         ("C2", "口香糖", 24, 24, 2),
     ]
-    lane_ids = []
+    lane_rows = []
     for slot, sku, cap, stock, transit in lanes:
         lane = Lane(location_id=loc.id, slot_no=slot, sku_name=sku, capacity=cap, stock=stock, in_transit=transit)
         db.add(lane); db.flush()
-        lane_ids.append(lane.id)
+        lane_rows.append(lane)
     now = datetime(2026, 9, 16, 12, 0, 0)
-    for i, lid in enumerate(lane_ids):
-        db.add(Sale(lane_id=lid, qty=2 + i, sold_at=now - timedelta(hours=i)))
+    for i, lane in enumerate(lane_rows):
+        db.add(Sale(lane_id=lane.id, qty=2 + i, sold_at=now - timedelta(hours=i)))
+    # 首张未核销补货单：B1 库存3/在途2/容量12，含正补量 7，核销后库存升、在途降、缺口变小。
+    payload = [{"id": l.id, "slot_no": l.slot_no, "sku_name": l.sku_name,
+                "capacity": l.capacity, "stock": l.stock, "in_transit": l.in_transit} for l in lane_rows]
+    db.add(RefillOrder(location_id=loc.id, created_at=now, status="open",
+                       lines_json=json.dumps(summarize(build_fill_lines(payload)), ensure_ascii=False)))
     db.commit()
