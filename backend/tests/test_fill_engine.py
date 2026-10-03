@@ -1,4 +1,4 @@
-from app.services.fill_engine import build_fill_lines, compute_gap, summarize
+from app.services.fill_engine import apply_arrival, build_fill_lines, compute_gap, summarize
 
 def test_gap_basic():
     assert compute_gap(20, 5, 0) == 15
@@ -21,3 +21,16 @@ def test_full_zero_fill():
     s = summarize(build_fill_lines(lanes))
     assert s["full_count"] == 1
     assert s["total_fill"] == 0
+
+def test_arrival_stock_up_transit_down():
+    assert apply_arrival(3, 5, 4) == (7, 1)
+
+def test_arrival_transit_floors_at_zero():
+    # 在途 2 < 补量 7：在途扣到 0 为止，不得为负
+    assert apply_arrival(3, 2, 7) == (10, 0)
+
+def test_arrival_zero_fill_keeps_lane():
+    assert apply_arrival(5, 3, 0) == (5, 3)
+
+def test_arrival_negative_fill_clamped():
+    assert apply_arrival(5, 3, -2) == (5, 3)

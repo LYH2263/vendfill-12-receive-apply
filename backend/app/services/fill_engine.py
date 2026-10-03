@@ -17,6 +17,13 @@ class FillLine:
 def compute_gap(capacity: int, stock: int, in_transit: int) -> int:
     return capacity - stock - in_transit
 
+def apply_arrival(stock: int, in_transit: int, fill_qty: int) -> tuple[int, int]:
+    """到货核销单行：库存 += 补量；在途扣去不超过补量的在途数，不足则扣到 0，不得为负。"""
+    qty = max(0, int(fill_qty))
+    transit = max(0, int(in_transit))
+    deduct = min(qty, transit)
+    return int(stock) + qty, transit - deduct
+
 def build_fill_lines(lanes: list[dict], requested: dict[int, int] | None = None) -> list[FillLine]:
     """requested optional desired fill per lane_id; capped by gap; never negative."""
     lines: list[FillLine] = []

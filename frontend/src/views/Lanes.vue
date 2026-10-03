@@ -5,7 +5,7 @@ const rows = ref<any[]>([])
 const refill = ref<any>(null)
 onMounted(async () => {
   rows.value = await api('/lanes')
-  try { refill.value = await api('/refills/run?location_id=1', { method: 'POST' }) } catch { /* */ }
+  try { refill.value = await api('/refills/preview?location_id=1') } catch { /* */ }
 })
 </script>
 <template>
